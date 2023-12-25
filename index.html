@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Animate a point along a route - Satellite Style</title>
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300&family=Montserrat:wght@300&display=swap">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.0/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <script src="https://cdn.webrtc-experiment.com/RecordRTC.js"></script>
+	<script src="https://unpkg.com/h264-mp4-encoder/embuild/dist/h264-mp4-encoder.web.js"></script>
+    <script src="https://cdn.webrtc-experiment.com/gumadapter.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+            background-color: #1f2024;
+            color: #fff;
+        }
+
+        .container {
+            height: 100vh;
+            align-items: center;
+            margin-left: 290px;
+            width: 60%;
+            height: 1200px;
+            display: flex;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 9px;
+            left: 0;
+            height: 90%;
+            width: 200px;
+            max-width: 200px;
+            background-color: #2b2c31;
+            border: 3px solid #303136;
+            border-radius: 15px;
+            margin-left: 20px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .map-container {
+            width: 66%;
+            height: 80%;
+            position: fixed;
+            bottom: 110px;
+            flex: 1;
+            padding: 20px;
+            background-color: #2b2c31;
+            border: 3px solid #303136;
+            border-radius: 25px;
+        }
+
+        .custom-tag {
+            width: 190px;
+            height: 30px;
+            background-color: #35363b;
+            border: 2px solid #2c2d32;
+            border-radius: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            position: center;
+            top: 0;
+            left: 0;
+            bottom: 150;
+            right: 0;
+        }
+
+        .navbar-input {
+            background-color: #2b2c31;
+            border: 1px solid #2f3035;
+            color: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+
+        .vehicle-dropdown {
+            background-color: #2b2c31;
+            border: 1px solid #2f3035;
+            color: white;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+
+        #submitBtn,
+        #replay,
+        #record,
+        #stopRecord {
+            background-color: #2b2c31;
+            color: white;
+            border: 1px solid #2f3035;
+            padding: 8px 15px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .theme-container {
+            align-items: center;
+            justify-content: center;
+        }
+
+        #submitBtn:hover,
+        #replay:hover,
+        #record:hover,
+        #stopRecord:hover {
+            background-color: #1d1e21;
+        }
+		
+		
+		   #clearAnimationBtn {
+        background-color: #2b2c31;
+        color: white;
+    border: 1px solid #2f3035;
+    padding: 8px 15px;
+    margin: 5px 0;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    #clearAnimationBtn:hover {
+        background-color: #1d1e21;
+    }
+		
+
+        .theme-container button {
+            background: none;
+            border: none;
+            margin-left: 4px;
+            padding: 0;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-container button img {
+            width: 40px;
+            height: 40px;
+        }
+
+        .distance-container {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        #distanceTag {
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="navbar-brand"><img src="images/GEOGLIDESTUDIO.PNG"></div>
+            <div class="custom-tag">MAP STYLE</div>
+            <div class="theme-container">
+                <button onclick="loadMap('mapbox://styles/mapbox/streets-v12')">
+                    <img src="icons/streets.png" alt="Streets">
+                </button>
+                <button onclick="loadMap('mapbox://styles/mapbox/outdoors-v12')">
+                    <img src="icons/outdoors.png" alt="Outdoors">
+                </button>
+                <button onclick="loadMap('mapbox://styles/mapbox/light-v11')">
+                    <img src="icons/light.png" alt="Light">
+                </button>
+                <button onclick="loadMap('mapbox://styles/mapbox/dark-v11')">
+                    <img src="icons/dark.png" alt="Dark">
+                </button>
+            </div>
+            <div class="custom-tag">DEPARTURE & ARRIVAL</div>
+            <div class="navbar-buttons">
+                <input type="text" id="departure" class="navbar-input" placeholder="Departure City">
+                <input type="text" id="arrival" class="navbar-input" placeholder="Arrival City">
+                <div class="theme-container">
+                    <div class="custom-tag">VEHICLE</div>
+                    <CENTER>
+                        <select id="vehicleDropdown" class="vehicle-dropdown">
+                            <option value="plane">Plane</option>
+                            <option value="boat">Boat</option>
+                            <option value="car">Car</option>
+                        </select>
+                    </CENTER>
+                </div>
+                <div class="theme-container">
+                    <div class="custom-tag">TRAVEL MODE</div>
+                    <select id="travelModeDropdown" class="vehicle-dropdown">
+                        <option value="land">Land</option>
+                        <option value="air">Air</option>
+                        <option value="boat">Boat</option>
+                    </select>
+                </div>
+                <div class="theme-container">
+                    <div class="custom-tag">ROUTE LINE STYLE</div>
+                    <center>
+                        <select id="routeLineStyleDropdown" class="vehicle-dropdown">
+                            <option value="blue">Blue Line</option>
+                            <option value="red-dotted">Red Dotted Line</option>
+                            <option value="yellow">Yellow Line</option>
+                        </select>
+                    </center>
+					
+<div class="theme-container">
+    <div class="custom-tag">ANIMATION SPEED</div>
+    <input type="range" id="animationSpeedSlider" min="1" max="10" value="5" class="vehicle-dropdown">
+</div>
+<br><br>
+<input type="checkbox" id="distanceCheckbox" onclick="toggleDistanceVisibility()"> Show Distance
+
+<div class="custom-tag">VIDEO SIZE</div>
+<div class="theme-container">
+    <label for="videoSizeDropdown">Select Video Size:</label>
+    <select id="videoSizeDropdown" class="vehicle-dropdown">
+        <option value="phone">Phone Size</option>
+        <option value="youtube">YouTube Size</option>
+    </select>
+</div>
+
+<div class="theme-container">
+    <button id="downloadButton" class="navbar-button button-89" style="display: none;">Download Video</button>
+</div>
+
+<button id="clearAnimationBtn" class="navbar-button button-89">Clear Animation</button>
+
+<CENTER> 
+    <button class="navbar-button button-89" id="submitBtn">Submit</button>
+</CENTER>
+<button id="record" class="navbar-button button-89">Record</button>
+<button id="stopRecord" class="navbar-button button-89" disabled>Stop Record</button>
+
+<!-- Add this part to create a download link for the recorded video -->
+<a id="downloadLink" style="display: none;">Download Video</a>
+                </div>
+            </div>
+        </div>
+        <div class="map-container">
+            <div id="map"></div>
+            <canvas id="animationCanvas"></canvas>
+        </div>
+		
+		
+	<script src="script.js"></script>
+	
+		
+		
+        <div class="custom-tag">ROUTE LINE STYLE</div>
+   <div class="distance-container" style="display: none;" id="distance-container">
+           <span id="distanceTag">0.00</span> kilometers
+        </div>
+
+
+</body>
+
+
+
+
+
+</html>
